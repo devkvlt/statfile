@@ -1,0 +1,5 @@
+#!/bin/bash
+
+/usr/local/bin/statfile stop
+rm /usr/local/bin/statfile
+rm ~/.statfile

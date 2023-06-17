@@ -1,4 +1,5 @@
 #!/bin/bash
 
-gcc main.c -o ut
-cp -f ut /usr/local/bin
+gcc -Wall -Wextra -Wpedantic -framework IOKit -framework CoreFoundation main.c -o statfile
+cp -f statfile /usr/local/bin
+rm statfile
