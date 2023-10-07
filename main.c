@@ -119,8 +119,8 @@ int network(u_int32_t *sent, u_int32_t *received) {
     u_int32_t bytes_received = 0;
 
     for (struct ifaddrs *ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        // Skip interfaces with no address or that are not up
-        if (ifa->ifa_addr == NULL || !(ifa->ifa_flags & IFF_UP)) {
+        // Skip interfaces with no address
+        if (ifa->ifa_addr == NULL) {
             continue;
         }
 
