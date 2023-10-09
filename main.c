@@ -21,11 +21,11 @@
 
 const int PATH_STRLEN    = 256; // "/Users/some_really_long_username"
 const int TIME_STRLEN    = 10;  // "00:00:00"
-const int DATE_STRLEN    = 11;  // "31/12/9999"
+const int DATE_STRLEN    = 11;  // "Mon 31 Jul"
 const int BATTERY_STRLEN = 6;   // "1,100"
 const int UPTIME_STRLEN  = 10;  // "999,23,59"
 const int RAM_STRLEN     = 4;   // "100"
-const int NETWORK_STRLEN = 9;   // "1023.9,4"
+const int NETWORK_STRLEN = 9;   // "1023.9MB"
 
 const int DEFAULT_INTERVAL = 1; // 1 second
 
@@ -199,7 +199,7 @@ void start() {
             char date_str[DATE_STRLEN];
             char time_str[TIME_STRLEN];
 
-            strftime(date_str, DATE_STRLEN, "%d/%m/%Y", timeinfo);
+            strftime(date_str, DATE_STRLEN, "%a %-d %b", timeinfo);
             strftime(time_str, TIME_STRLEN, "%H:%M", timeinfo);
 
             /***********
@@ -254,19 +254,21 @@ void start() {
             set_value_and_unit(sent, &sent_value, &sent_unit);
             set_value_and_unit(received, &received_value, &received_unit);
 
+            const char *units[] = {"B", "KB", "MB", "GB", "TB"};
+
             char sent_str[NETWORK_STRLEN];
             char received_str[NETWORK_STRLEN];
 
             if (sent_unit == 0 || sent_unit == 1) {
-                sprintf(sent_str, "%.0f,%d", sent_value, sent_unit);
+                sprintf(sent_str, "%.0f%s", sent_value, units[sent_unit]);
             } else {
-                sprintf(sent_str, "%.1f,%d", sent_value, sent_unit);
+                sprintf(sent_str, "%.1f%s", sent_value, units[sent_unit]);
             }
 
             if (received_unit == 0 || received_unit == 1) {
-                sprintf(received_str, "%.0f,%d", received_value, received_unit);
+                sprintf(received_str, "%.0f%s", received_value, units[received_unit]);
             } else {
-                sprintf(received_str, "%.1f,%d", received_value, received_unit);
+                sprintf(received_str, "%.1f%s", received_value, units[received_unit]);
             }
 
             // Update prev before next iteration
