@@ -140,6 +140,56 @@ int network(u_int32_t *sent, u_int32_t *received) {
     return 0;
 }
 
+unsigned long long previous_total_ticks = 0;
+unsigned long long previous_idle_ticks  = 0;
+
+// returns the current CPU usage.
+int cpu() {
+    host_cpu_load_info_data_t cpuinfo;
+    mach_msg_type_number_t    count = HOST_CPU_LOAD_INFO_COUNT;
+
+    if (host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, (host_info_t)&cpuinfo, &count) == KERN_SUCCESS) {
+        unsigned long long total_ticks = 0;
+
+        for (int i = 0; i < CPU_STATE_MAX; i++) {
+            total_ticks += cpuinfo.cpu_ticks[i];
+        }
+
+        unsigned long long idle_ticks                  = cpuinfo.cpu_ticks[CPU_STATE_IDLE];
+        unsigned long long total_ticks_since_last_time = total_ticks - previous_total_ticks;
+        unsigned long long idle_ticks_since_last_time  = idle_ticks - previous_idle_ticks;
+
+        int usage = 100;
+
+        if (total_ticks_since_last_time > 0) {
+            usage = 100 - (idle_ticks_since_last_time * 100) / total_ticks_since_last_time;
+        }
+
+        previous_total_ticks = total_ticks;
+        previous_idle_ticks  = idle_ticks;
+
+        return usage;
+    }
+
+    return -1;
+}
+
+// returns the current RAM usage.
+int ram() {
+    mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
+    vm_statistics_data_t   vmstat;
+
+    if (KERN_SUCCESS != host_statistics(mach_host_self(), HOST_VM_INFO, (host_info_t)&vmstat, &count)) {
+        perror("Failed to retrieve RAM info");
+        exit(EXIT_FAILURE);
+    }
+
+    double total = vmstat.wire_count + vmstat.active_count + vmstat.inactive_count + vmstat.free_count;
+    int    used  = (int)(100 * (vmstat.active_count + vmstat.inactive_count) / total);
+
+    return used;
+}
+
 // start starts the program. It forks a child process to run the daemon, writes
 // the daemon's PID to a pidfile for later reference and continuously writes the
 // various retrived stats to the statfile.
@@ -222,23 +272,6 @@ void start() {
             uptime(&days, &hours);
             sprintf(uptime_str, "%d,%d", days, hours);
 
-            /*******
-             * RAM *
-             *******/
-            mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
-            vm_statistics_data_t   vmstat;
-
-            if (KERN_SUCCESS != host_statistics(mach_host_self(), HOST_VM_INFO, (host_info_t)&vmstat, &count)) {
-                perror("Failed to retrieve RAM info");
-                exit(EXIT_FAILURE);
-            }
-
-            double total = vmstat.wire_count + vmstat.active_count + vmstat.inactive_count + vmstat.free_count;
-            int    used  = (int)(100 * (vmstat.active_count + vmstat.inactive_count) / total);
-
-            char ram_str[RAM_STRLEN];
-            sprintf(ram_str, "%d", used);
-
             /***********
              * Network *
              ***********/
@@ -277,8 +310,8 @@ void start() {
 
             // Write to statfile
             fprintf(
-                statfile, "%s|%s|%s|%s|%s|%s|%s", sent_str, received_str, uptime_str, battery_str, date_str, time_str,
-                ram_str
+                statfile, "%s|%s|%s|%s|%s|%s|%d|%d", sent_str, received_str, uptime_str, battery_str, date_str,
+                time_str, ram(), cpu()
             );
 
             fclose(statfile); // TODO: figure out if I should get this out of
