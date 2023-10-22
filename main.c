@@ -194,14 +194,23 @@ int ram() {
 // the daemon's PID to a pidfile for later reference and continuously writes the
 // various retrived stats to the statfile.
 void start() {
-    pid_t pid = fork();
+    FILE *pidfile = fopen(pidfile_path, "r");
+    pid_t pid;
+
+    if (pidfile != NULL) {
+        fscanf(pidfile, "%d", &pid);
+        fclose(pidfile);
+        kill(pid, SIGTERM);
+    }
+
+    pid = fork();
 
     if (pid == -1) {
         perror("Failed to fork daemon process");
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
         // Parent process: write daemon PID to file and exit
-        FILE *pidfile = fopen(pidfile_path, "w");
+        pidfile = fopen(pidfile_path, "w");
         if (pidfile == NULL) {
             perror("Failed to create pidfile");
             exit(EXIT_FAILURE);
@@ -323,15 +332,15 @@ void start() {
 
 // stop stops the program by killing the process whose PID is in pidfile.
 void stop() {
-    FILE *pid_file = fopen(pidfile_path, "r");
-    if (pid_file == NULL) {
+    FILE *pidfile = fopen(pidfile_path, "r");
+    if (pidfile == NULL) {
         perror("Failed to open pidfile");
         exit(EXIT_FAILURE);
     }
 
     pid_t pid;
-    fscanf(pid_file, "%d", &pid);
-    fclose(pid_file);
+    fscanf(pidfile, "%d", &pid);
+    fclose(pidfile);
     if (kill(pid, SIGTERM) == -1) {
         perror("Failed to send SIGTERM signal to daemon process");
         exit(EXIT_FAILURE);
